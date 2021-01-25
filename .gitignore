@@ -1,1 +1,6 @@
-model
+/.idea/
+/.ipynb_checkpoints/
+/__pycache__/
+/model/
+/outputs/
+/images/
