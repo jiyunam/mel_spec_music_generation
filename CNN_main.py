@@ -11,16 +11,19 @@ import soundfile as sf
 from tqdm import tqdm
 
 from CNN_model import Net
+from CNN_data import get_data
 
 sr = 22050
 lr = 1e-6
-epoch = 200
+epoch = 250
 batch_size = 1
 chunk_size_s = 3
 overlap = 0
+lowcut = 20
+highcut = 11000
 # chunk_size = int(chunk_size_s * sr)
 
-album = 'twinkle'
+album = 'piano'
 if album=="piano":
     dir_path = r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\24_preludes_for_solo_piano"
 elif album=="twinkle":
@@ -29,36 +32,11 @@ elif album=="twinkle":
 # waveform, sr_file = librosa.load(filename)
 # num_chunks = int(1/overlap) * len(waveform) // chunk_size
 
-def get_data(filename, chunk_size_s, overlap=0):
-    # waveform, sr = torchaudio.load(filename)
-    waveform, sr = librosa.load(filename)
-
-    # split waveform into chunks
-    chunk_size = int(chunk_size_s * sr)
-
-    def chunk_waveform(waveform, chunk_size, overlap):
-        idx = 0
-        # overlap_chunk = 0
-        overlap_chunk = int(overlap * chunk_size)
-        while idx + chunk_size - overlap_chunk <= len(waveform):
-            yield waveform[idx:idx + chunk_size - overlap_chunk]
-            idx += chunk_size - overlap_chunk
-
-    # chunks = torch.FloatTensor(list(chunk_waveform(waveform.numpy().squeeze(), chunk_size, overlap)))
-    chunks = torch.FloatTensor(list(chunk_waveform(waveform, chunk_size, overlap)))
-
-    arr_specs = []
-    for chunk in chunks:
-        specgram = torchaudio.transforms.MelSpectrogram(n_mels=80, n_fft=256)(chunk.reshape(1,-1))
-        arr_specs.extend(np.array(specgram))
-
-    return arr_specs
-
 def get_batch(files):
     arr_specs = None
     idx = 0
     for file in tqdm(files):
-        arr_spec = get_data(file, chunk_size_s, overlap)
+        arr_spec = get_data(file, chunk_size_s, overlap, lowcut, highcut)
         if idx == 0:
             arr_specs = np.empty(((len(files),) + np.array(arr_spec).shape))
         else:
@@ -117,7 +95,8 @@ def train(epoch):
     output = output.detach()
     inverse_mel_pred = torchaudio.transforms.InverseMelScale(sample_rate=sr, n_stft=129, n_mels=80)(output)
     pred_audio = torchaudio.transforms.GriffinLim(n_fft=256)(inverse_mel_pred)
-    sf.write(f'{album}_CNN_s{chunk_size_s}_sr{sr}_bs{batch_size}_o{overlap}_lr{lr}_epoch{epoch}.wav',
+    sf.write(f'{album}_CNN_s{chunk_size_s}_sr{sr}_bs{batch_size}_o{overlap}_'
+             f'bp[{lowcut},{highcut}]_lr{lr}_epoch{epoch}.wav',
              pred_audio[-1], sr)
     return net
 
