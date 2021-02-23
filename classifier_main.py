@@ -1,0 +1,88 @@
+from torch.utils.data import DataLoader
+import torch.nn as nn
+import torch.optim as optim
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from classifier_dataset import NoteDataset
+from classifier_model import Net
+from train_val_split import data_train, data_valid, label_train, label_valid
+
+lr = 0.002
+batch_size = 10
+max_epochs = 100
+
+def load_data(batch_size):
+    train_dataset = NoteDataset(data_train, label_train)
+    valid_dataset = NoteDataset(data_valid, label_valid)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader
+
+
+def main():
+    train_err = np.zeros(max_epochs)
+    train_loss = np.zeros(max_epochs)
+
+    net = Net()
+    criterion = nn.BCEWithLogitsLoss()
+    optimizer = optim.Adam(net.parameters(), lr=lr)
+
+    train_loader, val_loader = load_data(batch_size)
+    pred_pd, target_pd = pd.DataFrame([]), pd.DataFrame([])
+    for epoch in range(max_epochs):
+        total_train_loss = 0.0
+        total_train_err = 0.0
+        total_epoch = 0
+        for idx, data in enumerate(train_loader, 0):
+            inputs, labels = data
+            optimizer.zero_grad()
+
+            # Forward pass, backward pass, and optimize
+            outputs = net(inputs)
+
+            loss = criterion(input=outputs, target=labels)
+            loss.backward()
+            optimizer.step()
+
+            predictions = outputs.argmax(axis=1)
+            err = predictions != labels.argmax(axis=1)
+            total_train_err += int(err.sum())
+            total_train_loss += loss.item()
+            total_epoch += len(err)
+
+        train_err[epoch] = float(total_train_err) / (total_epoch)
+        train_loss[epoch] = float(total_train_loss) / (idx + 1)
+
+        pred_row = pd.DataFrame([predictions.numpy()], index=[epoch])
+        target_row = pd.DataFrame([labels.argmax(axis=1).numpy()], index=[epoch])
+        pred_pd = pd.concat([pred_pd, pred_row]) if not pred_pd.empty else pred_row
+        target_pd = pd.concat([target_pd, target_row]) if not target_pd.empty else target_row
+
+        if epoch%10 == 0:
+            print("Epoch {} | Train acc: {} | Train loss: {}".format(epoch + 1, 1 - train_err[epoch], train_loss[epoch]))
+            print("outputs: ", outputs)
+            print("predictions: ", predictions)
+            print("target:      ", labels.argmax(axis=1))
+
+    pred_pd.to_csv("predicted_notes.csv")
+    target_pd.to_csv("target_notes.csv")
+    plt.figure()
+    plt.title("Training Accuracy over Epochs")
+    plt.plot(np.arange(max_epochs), 1 - train_err, label="Training")
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy")
+    plt.savefig("./images/TrainAcc_bs%s_lr%s_epoch%s.png" %(batch_size, lr, max_epochs))
+
+    plt.figure()
+    plt.title("Training Loss over Epochs")
+    plt.plot(np.arange(max_epochs), train_loss, label="Training")
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.savefig("./images/TrainLoss_bs%s_lr%s_epoch%s.png" %(batch_size, lr, max_epochs))
+
+if __name__ == "__main__":
+    main()
