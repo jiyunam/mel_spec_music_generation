@@ -1,4 +1,6 @@
+# Main module for note classification task
 from torch.utils.data import DataLoader
+import torch
 import torch.nn as nn
 import torch.optim as optim
 
@@ -64,25 +66,26 @@ def main():
 
         if epoch%10 == 0:
             print("Epoch {} | Train acc: {} | Train loss: {}".format(epoch + 1, 1 - train_err[epoch], train_loss[epoch]))
-            print("outputs: ", outputs)
-            print("predictions: ", predictions)
-            print("target:      ", labels.argmax(axis=1))
+            # print("outputs: ", outputs)
+            # print("predictions: ", predictions)
+            # print("target:      ", labels.argmax(axis=1))
 
-    pred_pd.to_csv("predicted_notes.csv")
-    target_pd.to_csv("target_notes.csv")
-    plt.figure()
-    plt.title("Training Accuracy over Epochs")
-    plt.plot(np.arange(max_epochs), 1 - train_err, label="Training")
-    plt.xlabel("Epochs")
-    plt.ylabel("Accuracy")
-    plt.savefig("./images/TrainAcc_bs%s_lr%s_epoch%s.png" %(batch_size, lr, max_epochs))
-
-    plt.figure()
-    plt.title("Training Loss over Epochs")
-    plt.plot(np.arange(max_epochs), train_loss, label="Training")
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss")
-    plt.savefig("./images/TrainLoss_bs%s_lr%s_epoch%s.png" %(batch_size, lr, max_epochs))
+    torch.save(net.state_dict(), f"model/classifier_bs{batch_size}_lr{lr}_epoch{max_epochs}.pt")
+    # pred_pd.to_csv("predicted_notes.csv")
+    # target_pd.to_csv("target_notes.csv")
+    # plt.figure()
+    # plt.title("Training Accuracy over Epochs")
+    # plt.plot(np.arange(max_epochs), 1 - train_err, label="Training")
+    # plt.xlabel("Epochs")
+    # plt.ylabel("Accuracy")
+    # plt.savefig("./images/TrainAcc_bs%s_lr%s_epoch%s.png" %(batch_size, lr, max_epochs))
+    #
+    # plt.figure()
+    # plt.title("Training Loss over Epochs")
+    # plt.plot(np.arange(max_epochs), train_loss, label="Training")
+    # plt.xlabel("Epochs")
+    # plt.ylabel("Loss")
+    # plt.savefig("./images/TrainLoss_bs%s_lr%s_epoch%s.png" %(batch_size, lr, max_epochs))
 
 if __name__ == "__main__":
     main()

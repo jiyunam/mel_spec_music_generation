@@ -12,3 +12,4 @@ class NoteDataset(data.Dataset):
         features = self.features[index]
         label = self.labels[index]
         return features, label
+    

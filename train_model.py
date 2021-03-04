@@ -8,7 +8,7 @@ import torch.optim as optim
 from tqdm import tqdm
 
 from model import WaveNet
-from data_processing import Dataset
+from dataset import Dataset
 
 # Model Parameters
 layers = 10

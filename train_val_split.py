@@ -19,7 +19,7 @@ def get_data(dir_path):
         data = torch.zeros(1, n_mels, spec_len)
         label = filename.split('\\')[-1].split('_')[0]
         waveform, sr = librosa.load(filename)
-        specgram = torchaudio.transforms.MelSpectrogram(n_mels=n_mels, n_fft=256)(torch.FloatTensor(waveform))
+        specgram = torchaudio.transforms.MelSpectrogram(n_mels=n_mels, n_fft=spec_len)(torch.FloatTensor(waveform))
         data[:,:,:specgram.shape[-1]] = specgram #pad with zeros to size
         dataset[idx] = data
         labels.append(label)

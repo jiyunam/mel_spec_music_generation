@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.utils import data
 
-from data_processing import Dataset
+from dataset import Dataset
 
 dir_path = r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\24_preludes_for_solo_piano"
 seed = 42 # or np.random.seed
