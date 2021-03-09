@@ -5,24 +5,31 @@ import torch.nn as nn
 import torch.optim as optim
 
 import librosa
+import soundfile as sf
+import matplotlib.pyplot as plt
 import numpy as np
-from tqdm import trange
+from tqdm import trange, tqdm
 
 from preprocess_music import get_dataset, spectrogram
 from classifier_dataset import NoteDataset
 from prediction_model import PredNet
 
 # model params
-lr = 0.002
-batch_size = 10
-max_epochs = 150
+lr = 0.01
+batch_size = 12
+max_epochs = 600
 
 # preprocess params
 chunk_size_s = 1
-pred_size_s = 0.25
+pred_size_s = 1
 overlap = 0
 n_mels = 80
 n_fft = 270
+
+# misc
+seed = 100
+np.random.seed(seed)
+torch.manual_seed(seed)
 
 file_path = r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\twinkle\twinkle-piano.mp3"
 net_state_path = r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\wavenet_pytorch\model\classifier_bs10_lr0.002_epoch100.pt"
@@ -54,7 +61,7 @@ def get_spec_data(waveform, sr, *, n_mels=n_mels, n_fft=n_fft):
     return spec_data
 
 def get_complete_prediction(net, start_chunk, sr, total_sec):
-    print(f"Getting predicted output using {len(start_chunk)/sr}s of starting input...")
+    print(f"Getting {total_sec}s predicted output using {len(start_chunk)/sr}s of starting input...")
     # generate output `pred_size_s` given beginning chunk
     spec_data = get_spec_data(start_chunk, sr, n_mels=n_mels, n_fft=n_fft)
     output_preds = net(spec_data)
@@ -65,14 +72,32 @@ def get_complete_prediction(net, start_chunk, sr, total_sec):
     prev_chunk = start_chunk.copy()
     for _ in trange(int(total_sec/pred_size_s)):
         waveform, sr = librosa.load(note_paths[note_map[predicted_note]])
-        waveform = waveform[100:int(sr*pred_size_s)+100] # get `pred_size_s` s of predicted waveform (use middle-ish)
+        mid_waveform = len(waveform)//2
+        waveform = waveform[mid_waveform:int(sr*pred_size_s)+mid_waveform] # get `pred_size_s` s of predicted waveform (use middle-ish)
         curr_chunk = np.concatenate((prev_chunk, waveform))[-len(prev_chunk):] # get 1 sec of data total
         spec_data = get_spec_data(curr_chunk, sr, n_mels=n_mels, n_fft=n_fft)
         output_preds = net(spec_data)
-        predicted_note = output_preds.argmax(axis=1)
+        norm_out_preds = (output_preds[0] - min(output_preds[0]))/(max(output_preds[0])-min(output_preds[0])) #unity-based normalization to get output between 0,1
+        norm_out_preds /= norm_out_preds.sum() # sum to 1 for prob distribution
+        # predicted_note = output_preds.argmax(axis=1)
+        predicted_note = np.random.choice(len(norm_out_preds), 1, p=norm_out_preds.detach().numpy())[0]
         predicted_notes.append(note_map[predicted_note])
         prev_chunk = curr_chunk.copy()
     return predicted_notes
+
+def get_wav_output(outpath, predicted_notes, note_len=0.25):
+    print(f"Writing output to {outpath}...")
+    output = np.array([])
+    for predicted_note in tqdm(predicted_notes):
+        waveform, sr = librosa.load(note_paths[predicted_note])
+        mid_waveform = len(waveform) // 2
+        waveform = waveform[mid_waveform:int(sr * note_len) + mid_waveform]
+        output = np.concatenate((output, waveform)) if len(output) !=0 else waveform
+    sf.write(outpath, output, sr)
+    plt.figure()
+    plt.plot(output)
+    plt.savefig(outpath.split(".")[0] + ".png")
+    return
 
 def main():
     train_err = np.zeros(max_epochs)
@@ -111,11 +136,15 @@ def main():
             print(
                 "Epoch {} | Train acc: {} | Train loss: {}".format(epoch + 1, 1 - train_err[epoch], train_loss[epoch]))
 
+    # use final model and 1s start chunk to get full prediction
     waveform, sr = librosa.load(file_path)
-    start_chunk = waveform[:int(sr*1)]
+    start_offset_s = 0 #s offset from begining of source file
+    start_offset = int(start_offset_s * sr)
+    start_chunk = waveform[start_offset:int(sr*1)+start_offset]
     note_sequence = get_complete_prediction(net, start_chunk, sr, total_sec=20)
     print(f"Final note sequence (each chunk={pred_size_s}s): ", note_sequence)
-
+    get_wav_output(f"./outputs/ps{pred_size_s}s_epoch{max_epochs}_lr{lr}_bs{batch_size}.wav",
+                   note_sequence, note_len=pred_size_s)
 
 if __name__ == "__main__":
     main()

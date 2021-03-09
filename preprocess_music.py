@@ -9,6 +9,9 @@ import numpy as np
 from classifier_model import Net
 from sklearn.preprocessing import OneHotEncoder
 
+seed = 100
+np.random.seed(seed)
+torch.manual_seed(seed)
 oneh_encoder = OneHotEncoder()
 
 def spectrogram(waveform, sr, chunk_size_s=None, overlap=0, *, n_mels=80, n_fft=256):
