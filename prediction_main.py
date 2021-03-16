@@ -16,12 +16,12 @@ from prediction_model import PredNet
 
 # model params
 lr = 0.01
-batch_size = 12
-max_epochs = 600
+batch_size = 10
+max_epochs = 500
 
 # preprocess params
-chunk_size_s = 1
-pred_size_s = 1
+chunk_size_s = 1.5
+pred_size_s = 1.5
 overlap = 0
 n_mels = 80
 n_fft = 270
@@ -31,27 +31,32 @@ seed = 100
 np.random.seed(seed)
 torch.manual_seed(seed)
 
-file_path = r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\twinkle\twinkle-piano.mp3"
-net_state_path = r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\wavenet_pytorch\model\classifier_bs10_lr0.002_epoch100.pt"
+song_map = {
+    "twinkle": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\simple\twinkle-piano.mp3",
+    "spider": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\simple\spider-piano.mp3",
+    "macdonald": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\simple\macdonald-piano.mp3"
+}
+song = "macdonald"
+file_path = song_map[song]
+net_state_path = r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\wavenet_pytorch\model\classifier_bs10_lr0.002_epoch150.pt"
 data_train, label_train = get_dataset(file_path, net_state_path, chunk_size_s, overlap, n_mels=n_mels, n_fft=n_fft)
 data_valid, label_valid = None, None
 
 note_paths = {
-    "A": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\twinkle_notes\A_1.mp3",
-    "C": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\twinkle_notes\C_3.mp3",
-    "D": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\twinkle_notes\D_1.mp3",
-    "E": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\twinkle_notes\E_1.mp3",
-    "F": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\twinkle_notes\F_1.mp3",
-    "G": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\twinkle_notes\G_1.mp3"
+    "A": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\notes\A_1.mp3",
+    "B": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\notes\B_1.mp3",
+    "C": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\notes\C_1.mp3",
+    "D": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\notes\D_4.mp3",
+    "E": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\notes\E_1.mp3",
+    "G": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\notes\G_10.mp3"
 }
-note_map = ["A","C","D","E","F","G"]
+note_map = ["A","B","C","D","E","G"]
 
 def load_data(batch_size):
     train_dataset = NoteDataset(data_train, label_train)
     valid_dataset = NoteDataset(data_valid, label_valid)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
-
     return train_loader, val_loader
 
 def get_spec_data(waveform, sr, *, n_mels=n_mels, n_fft=n_fft):
@@ -143,7 +148,7 @@ def main():
     start_chunk = waveform[start_offset:int(sr*1)+start_offset]
     note_sequence = get_complete_prediction(net, start_chunk, sr, total_sec=20)
     print(f"Final note sequence (each chunk={pred_size_s}s): ", note_sequence)
-    get_wav_output(f"./outputs/ps{pred_size_s}s_epoch{max_epochs}_lr{lr}_bs{batch_size}.wav",
+    get_wav_output(f"./outputs/{song}_ps{pred_size_s}s_epoch{max_epochs}_lr{lr}_bs{batch_size}.wav",
                    note_sequence, note_len=pred_size_s)
 
 if __name__ == "__main__":

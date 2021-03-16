@@ -14,7 +14,7 @@ from train_val_split import data_train, data_valid, label_train, label_valid
 
 lr = 0.002
 batch_size = 10
-max_epochs = 100
+max_epochs = 150
 
 def load_data(batch_size):
     train_dataset = NoteDataset(data_train, label_train)
