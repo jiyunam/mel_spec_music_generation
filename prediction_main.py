@@ -13,11 +13,13 @@ from tqdm import trange, tqdm
 from preprocess_music import get_dataset, spectrogram
 from classifier_dataset import NoteDataset
 from prediction_model import PredNet
+from config import song_map, note_paths, note_map
 
 # model params
 lr = 0.01
-batch_size = 10
-max_epochs = 500
+batch_size = 12
+max_epochs = 200
+loss_fn = "BCEWithLogits"
 
 # preprocess params
 chunk_size_s = 1.5
@@ -31,26 +33,13 @@ seed = 100
 np.random.seed(seed)
 torch.manual_seed(seed)
 
-song_map = {
-    "twinkle": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\simple\twinkle-piano.mp3",
-    "spider": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\simple\spider-piano.mp3",
-    "macdonald": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\simple\macdonald-piano.mp3"
-}
-song = "macdonald"
+song = "twinkle"
 file_path = song_map[song]
 net_state_path = r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\wavenet_pytorch\model\classifier_bs10_lr0.002_epoch150.pt"
-data_train, label_train = get_dataset(file_path, net_state_path, chunk_size_s, overlap, n_mels=n_mels, n_fft=n_fft)
+data_train, label_train, chunk_size_s = get_dataset(file_path, net_state_path, chunk_size_s, overlap, n_mels=n_mels, n_fft=n_fft)
+pred_size_s = round(chunk_size_s,2)
 data_valid, label_valid = None, None
 
-note_paths = {
-    "A": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\notes\A_1.mp3",
-    "B": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\notes\B_1.mp3",
-    "C": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\notes\C_1.mp3",
-    "D": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\notes\D_4.mp3",
-    "E": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\notes\E_1.mp3",
-    "G": r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\notes\G_10.mp3"
-}
-note_map = ["A","B","C","D","E","G"]
 
 def load_data(batch_size):
     train_dataset = NoteDataset(data_train, label_train)
@@ -82,7 +71,7 @@ def get_complete_prediction(net, start_chunk, sr, total_sec):
         curr_chunk = np.concatenate((prev_chunk, waveform))[-len(prev_chunk):] # get 1 sec of data total
         spec_data = get_spec_data(curr_chunk, sr, n_mels=n_mels, n_fft=n_fft)
         output_preds = net(spec_data)
-        norm_out_preds = (output_preds[0] - min(output_preds[0]))/(max(output_preds[0])-min(output_preds[0])) #unity-based normalization to get output between 0,1
+        norm_out_preds = (output_preds[0] - min(output_preds[0]))/(max(output_preds[0])-min(output_preds[0])) # unity-based normalization to get output between 0,1
         norm_out_preds /= norm_out_preds.sum() # sum to 1 for prob distribution
         # predicted_note = output_preds.argmax(axis=1)
         predicted_note = np.random.choice(len(norm_out_preds), 1, p=norm_out_preds.detach().numpy())[0]
@@ -109,7 +98,12 @@ def main():
     train_loss = np.zeros(max_epochs)
 
     net = PredNet()
-    criterion = nn.BCEWithLogitsLoss()
+    if loss_fn == "MSE":
+        criterion = nn.MSELoss()
+    elif loss_fn == "BCEWithLogits":
+        criterion = nn.BCEWithLogitsLoss()
+    else:
+        criterion = nn.BCELoss()
     optimizer = optim.Adam(net.parameters(), lr=lr)
 
     train_loader, val_loader = load_data(batch_size)
@@ -124,7 +118,7 @@ def main():
             # Forward pass, backward pass, and optimize
             outputs = net(inputs)
 
-            loss = criterion(input=outputs, target=labels)
+            loss = criterion(input=outputs.float(), target=labels.float())
             loss.backward()
             optimizer.step()
 
@@ -148,7 +142,7 @@ def main():
     start_chunk = waveform[start_offset:int(sr*1)+start_offset]
     note_sequence = get_complete_prediction(net, start_chunk, sr, total_sec=20)
     print(f"Final note sequence (each chunk={pred_size_s}s): ", note_sequence)
-    get_wav_output(f"./outputs/{song}_ps{pred_size_s}s_epoch{max_epochs}_lr{lr}_bs{batch_size}.wav",
+    get_wav_output(f"./outputs/shortestchunk_{song}_ps{pred_size_s}s_epoch{max_epochs}_lr{lr}_bs{batch_size}_loss{loss_fn}.wav",
                    note_sequence, note_len=pred_size_s)
 
 if __name__ == "__main__":
