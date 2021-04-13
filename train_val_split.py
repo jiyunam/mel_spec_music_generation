@@ -34,6 +34,6 @@ torch.manual_seed(seed)
 dir_path = r"C:\Users\jiyun\Desktop\Jiyu\2020-2021\ESC499 - Thesis\WaveNet\magnatagatune\data\notes"
 dataset, labels = get_data(dir_path)
 
-# data_train, data_valid, label_train, label_valid = train_test_split(dataset, labels, test_size=0.1, random_state=seed)
+data_train, data_valid, label_train, label_valid = train_test_split(dataset, labels, test_size=0.1, random_state=seed)
 # for now use entire dataset for train
-data_train, data_valid, label_train, label_valid = dataset, None, labels, None
+# data_train, data_valid, label_train, label_valid = dataset, None, labels, None
