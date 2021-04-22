@@ -1,6 +1,6 @@
 # mel_spec_music_generation
 
-###About the Project
+### About the Project
 
 Since the rapid development of automation, the task of trying to algorithmically compose music with little human intervention has been of great interest. This interest is further elevated in the field of small to mid-sized game or film production companies that find the financial cost involved in commissioning original, high-quality background music difficult to meet. Thus, a need for algorithmic composition arises.
 
