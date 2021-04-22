@@ -12,5 +12,11 @@ Consequently, this project serves as a proof of concept of a much simpler model 
 ### Requires
 
 - librosa
+- soundfile
+- torch, torchvision
+- sklearn
+- tqdm
 - numpy
+- pandas
+- matplotlib
 - ffmpeg (for mp3 support backend) -> conda install -c conda-forge ffmpeg librosa
